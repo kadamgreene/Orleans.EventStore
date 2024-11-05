@@ -45,3 +45,4 @@ nuget/
 *.sln.ide
 *.sln.ide-shm
 *.sln.ide-wal
+/.vs

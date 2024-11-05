@@ -43,31 +43,26 @@ public static class EventStoreStorageServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddEventStoreBasedLogConsistencyProvider(this IServiceCollection services, string name, Action<OptionsBuilder<EventStoreStorageOptions>>? configureOptions = null)
     {
+        // Configure log consistency.
+        services.TryAddSingleton<Factory<IGrainContext, ILogConsistencyProtocolServices>>(serviceProvider =>
+        {
+            var protocolServicesFactory = ActivatorUtilities.CreateFactory(typeof(DefaultProtocolServices), new[] { typeof(IGrainContext) });
+            return grainContext => (ILogConsistencyProtocolServices)protocolServicesFactory(serviceProvider, new object[] { grainContext });
+        });
+
         // Configure log storage.
         configureOptions?.Invoke(services.AddOptions<EventStoreStorageOptions>(name));
         services.AddTransient<IConfigurationValidator>(sp => new EventStoreStorageOptionsValidator(sp.GetRequiredService<IOptionsMonitor<EventStoreStorageOptions>>().Get(name), name));
         services.AddTransient<IPostConfigureOptions<EventStoreStorageOptions>, DefaultStorageProviderSerializerOptionsConfigurator<EventStoreStorageOptions>>();
         services.ConfigureNamedOptionForLogging<EventStoreStorageOptions>(name);
-        if (string.Equals(name, ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME, StringComparison.Ordinal))
-        {
-            services.TryAddSingleton(sp => sp.GetServiceByName<ILogConsistentStorage>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
-        }
-        services.AddSingletonNamedService<ILogConsistentStorage>(name, EventStoreLogConsistentStorageFactory.Create);
-        services.AddSingletonNamedService<ILifecycleParticipant<ISiloLifecycle>>(name, (sp, n) => (ILifecycleParticipant<ISiloLifecycle>)sp.GetRequiredServiceByName<ILogConsistentStorage>(n));
 
-        // Configure log consistency.
-        services.TryAddSingleton<Factory<IGrainContext, ILogConsistencyProtocolServices>>(serviceProvider =>
-                                                                                          {
-                                                                                              var protocolServicesFactory = ActivatorUtilities.CreateFactory(typeof(DefaultProtocolServices), new[] { typeof(IGrainContext) });
-                                                                                              return grainContext => (ILogConsistencyProtocolServices)protocolServicesFactory(serviceProvider, new object[] { grainContext });
-                                                                                          });
+        services.TryAddSingleton(sp => sp.GetKeyedService<ILogConsistentStorage>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
+        services.AddKeyedSingleton<ILogConsistentStorage>(name, (sp, obj) => EventStoreLogConsistentStorageFactory.Create(sp, obj.ToString()));
+        services.AddSingleton<ILifecycleParticipant<ISiloLifecycle>>((sp) => (ILifecycleParticipant<ISiloLifecycle>)sp.GetRequiredKeyedService<ILogConsistentStorage>(name));
 
         // Configure log view adaptor.
-        if (string.Equals(name, ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME, StringComparison.Ordinal))
-        {
-            services.TryAddSingleton(sp => sp.GetServiceByName<ILogViewAdaptorFactory>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
-        }
-        services.AddSingletonNamedService<ILogViewAdaptorFactory>(name, LogConsistencyProviderFactory.Create);
+        services.TryAddSingleton<ILogViewAdaptorFactory>(sp => sp.GetKeyedService<ILogViewAdaptorFactory>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
+        services.AddKeyedSingleton<ILogViewAdaptorFactory>(name, (sp, name) => LogConsistencyProviderFactory.Create(sp, name.ToString()));
         return services;
     }
 }

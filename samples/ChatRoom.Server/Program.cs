@@ -38,8 +38,8 @@ public static class Program
     private static IHostBuilder CreateHostBuilder(string[] args)
     {
         // var redisConnectionString0 = "123.60.184.85:6379,defaultDatabase=0";
-        var redisConnectionString1 = "123.60.184.85:6379,defaultDatabase=1";
-        var eventStoreConnectionString = "esdb://123.60.184.85:2113?tls=false";
+        var redisConnectionString1 = "localhost:59821";
+        var eventStoreConnectionString = "esdb://127.0.0.1:2113?tls=false";
         return Host.CreateDefaultBuilder(args)
                    .UseOrleans(silo =>
                                {
