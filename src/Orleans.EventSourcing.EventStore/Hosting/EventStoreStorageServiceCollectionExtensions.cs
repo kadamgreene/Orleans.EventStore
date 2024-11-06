@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Orleans.Configuration;
 using Orleans.EventSourcing;
 using Orleans.EventSourcing.EventStoreStorage;
+using Orleans.EventSourcing.Storage;
 using Orleans.Providers;
 using Orleans.Runtime;
 using Orleans.Storage;
@@ -43,6 +44,9 @@ public static class EventStoreStorageServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddEventStoreBasedLogConsistencyProvider(this IServiceCollection services, string name, Action<OptionsBuilder<EventStoreStorageOptions>>? configureOptions = null)
     {
+        // Create config options
+        configureOptions?.Invoke(services.AddOptions<EventStoreStorageOptions>(name));
+
         // Configure log consistency.
         services.TryAddSingleton<Factory<IGrainContext, ILogConsistencyProtocolServices>>(serviceProvider =>
         {
@@ -50,8 +54,9 @@ public static class EventStoreStorageServiceCollectionExtensions
             return grainContext => (ILogConsistencyProtocolServices)protocolServicesFactory(serviceProvider, new object[] { grainContext });
         });
 
+        services.TryAddKeyedSingleton<ISnapshotPolicy, SnapshotPolicyDriver>(name);
+
         // Configure log storage.
-        configureOptions?.Invoke(services.AddOptions<EventStoreStorageOptions>(name));
         services.AddTransient<IConfigurationValidator>(sp => new EventStoreStorageOptionsValidator(sp.GetRequiredService<IOptionsMonitor<EventStoreStorageOptions>>().Get(name), name));
         services.AddTransient<IPostConfigureOptions<EventStoreStorageOptions>, DefaultStorageProviderSerializerOptionsConfigurator<EventStoreStorageOptions>>();
         services.ConfigureNamedOptionForLogging<EventStoreStorageOptions>(name);
