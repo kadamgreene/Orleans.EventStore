@@ -47,10 +47,10 @@ public static class EventStoreStorageServiceCollectionExtensions
         services.ConfigureNamedOptionForLogging<EventStoreStorageOptions>(name);
         if (string.Equals(name, ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME, StringComparison.Ordinal))
         {
-            services.TryAddSingleton(sp => sp.GetServiceByName<IGrainStorage>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
+            services.TryAddSingleton(sp => sp.GetKeyedService<IGrainStorage>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME));
         }
-        services.AddSingletonNamedService<IGrainStorage>(name, EventStoreGrainStorageFactory.Create);
-        services.AddSingletonNamedService<ILifecycleParticipant<ISiloLifecycle>>(name, (sp, n) => (ILifecycleParticipant<ISiloLifecycle>)sp.GetRequiredServiceByName<IGrainStorage>(n));
+        services.AddKeyedSingleton<IGrainStorage>(name, (sp, name) => EventStoreGrainStorageFactory.Create(sp, name.ToString()));
+        services.AddKeyedSingleton<ILifecycleParticipant<ISiloLifecycle>>(name, (sp, n) => (ILifecycleParticipant<ISiloLifecycle>)sp.GetRequiredKeyedService<IGrainStorage>(n));
         return services;
     }
 }

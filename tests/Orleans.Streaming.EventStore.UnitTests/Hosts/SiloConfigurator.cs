@@ -8,7 +8,7 @@ public class SiloConfigurator : ISiloConfigurator
     /// <inheritdoc />
     public void Configure(ISiloBuilder siloBuilder)
     {
-        var connectionString = "esdb://123.60.184.85:2113?tls=false";
+        var connectionString = "esdb://127.0.0.1:2113?tls=false";
         siloBuilder.AddStreaming();
         siloBuilder.AddEventStoreStreams(Constants.StreamProviderName,
                                          options =>

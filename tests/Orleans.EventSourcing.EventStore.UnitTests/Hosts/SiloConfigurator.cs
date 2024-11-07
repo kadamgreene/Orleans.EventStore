@@ -8,7 +8,7 @@ public class SiloConfigurator : ISiloConfigurator
     /// <inheritdoc />
     public void Configure(ISiloBuilder silo)
     {
-        var eventStoreConnectionString = "esdb://123.60.184.85:2113?tls=false";
+        var eventStoreConnectionString = "esdb://localhost:2113?tls=false";
         silo.AddEventStoreBasedLogConsistencyProvider(Constants.LogConsistencyStoreName,
                                                       options =>
                                                       {

@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Orleans.EventSourcing.Common;
+using Orleans.EventSourcing.Storage;
 using Orleans.Serialization;
 using Orleans.Storage;
 
@@ -25,7 +26,7 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
     private readonly string _grainTypeName;
     private readonly ILogConsistentStorage _logStorage;
     private readonly DeepCopier _deepCopier;
-
+    private readonly ISnapshotPolicy _snapshotPolicy;
     private SnapshotWithMetaDataAndETag<TLogView> _globalSnapshot = new();
     private TLogView _confirmedView = new();
     private int _confirmedVersion;
@@ -34,7 +35,7 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
     /// <summary>
     ///     Initializes a new instance of LogViewAdaptor class
     /// </summary>
-    public LogViewAdaptor(ILogViewAdaptorHost<TLogView, TLogEntry> host, TLogView initialState, IGrainStorage grainStorage, string grainTypeName, ILogConsistencyProtocolServices services, ILogConsistentStorage logStorage, DeepCopier deepCopier)
+    public LogViewAdaptor(ILogViewAdaptorHost<TLogView, TLogEntry> host, TLogView initialState, IGrainStorage grainStorage, string grainTypeName, ILogConsistencyProtocolServices services, ILogConsistentStorage logStorage, DeepCopier deepCopier, ISnapshotPolicy snapshotPolicy)
         : base(host, initialState, services)
     {
         ArgumentNullException.ThrowIfNull(grainStorage);
@@ -44,15 +45,7 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
         _grainTypeName = grainTypeName;
         _logStorage = logStorage;
         _deepCopier = deepCopier;
-    }
-
-    /// <inheritdoc />
-    protected override void InitializeConfirmedView(TLogView initialState)
-    {
-        _globalSnapshot = new SnapshotWithMetaDataAndETag<TLogView>(initialState);
-        _confirmedView = initialState;
-        _confirmedVersion = 0;
-        _globalVersion = 0;
+        _snapshotPolicy = snapshotPolicy;
     }
 
     /// <inheritdoc />
@@ -68,15 +61,12 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
     }
 
     /// <inheritdoc />
-    public override Task<IReadOnlyList<TLogEntry>> RetrieveLogSegment(int fromVersion, int toVersion)
+    protected override void InitializeConfirmedView(TLogView initialState)
     {
-        return _logStorage.ReadAsync<TLogEntry>(_grainTypeName, Services.GrainId, fromVersion, toVersion - fromVersion + 1);
-    }
-
-    /// <inheritdoc />
-    protected override SubmissionEntry<TLogEntry> MakeSubmissionEntry(TLogEntry entry)
-    {
-        return new SubmissionEntry<TLogEntry> { Entry = entry };
+        _globalSnapshot = new SnapshotWithMetaDataAndETag<TLogView>(initialState);
+        _confirmedView = initialState;
+        _confirmedVersion = 0;
+        _globalVersion = 0;
     }
 
     private void UpdateConfirmedView(IReadOnlyList<TLogEntry> logEntries)
@@ -92,7 +82,18 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
                 Services.CaughtUserCodeException("UpdateView", nameof(UpdateConfirmedView), ex);
             }
         }
-        _confirmedVersion += logEntries.Count;
+    }
+
+    /// <inheritdoc />
+    public override Task<IReadOnlyList<TLogEntry>> RetrieveLogSegment(int fromVersion, int toVersion)
+    {
+        return _logStorage.ReadAsync<TLogEntry>(_grainTypeName, Services.GrainId, fromVersion, toVersion - fromVersion + 1);
+    }
+
+    /// <inheritdoc />
+    protected override SubmissionEntry<TLogEntry> MakeSubmissionEntry(TLogEntry entry)
+    {
+        return new SubmissionEntry<TLogEntry> { Entry = entry };
     }
 
     #region Read & Write
@@ -119,9 +120,10 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
                     _globalVersion = await _logStorage.GetLastVersionAsync(_grainTypeName, Services.GrainId);
                     if (_confirmedVersion < _globalVersion)
                     {
-                        var logEntries = await RetrieveLogSegment(_confirmedVersion, _globalVersion);
+                        var logEntries = await RetrieveLogSegment(_confirmedVersion + 1, _globalVersion);
                         Services.Log(LogLevel.Debug, "read success {0}", logEntries);
                         UpdateConfirmedView(logEntries);
+                        _confirmedVersion = _globalVersion;
                     }
                     LastPrimaryIssue.Resolve(Host, Services);
                     break; // successful
@@ -149,13 +151,14 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
         var logsSuccessfullyAppended = false;
         var batchSuccessfullyWritten = false;
         var writebit = _globalSnapshot.State.FlipBit(Services.MyClusterId);
+        var events = updates.Select(x => x.Entry).ToImmutableList();
         try
         {
-            var logEntries = updates.Select(x => x.Entry).ToImmutableList();
-            _globalVersion = await _logStorage.AppendAsync(_grainTypeName, Services.GrainId, logEntries, _globalVersion);
+            _globalVersion = await _logStorage.AppendAsync(_grainTypeName, Services.GrainId, events, _globalVersion);
             logsSuccessfullyAppended = true;
-            Services.Log(LogLevel.Debug, "write success {0}", logEntries);
-            UpdateConfirmedView(logEntries);
+            Services.Log(LogLevel.Debug, "write success {0}", events);
+            UpdateConfirmedView(events);
+            _confirmedVersion = _globalVersion;
         }
         catch (Exception ex)
         {
@@ -165,11 +168,15 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
         {
             try
             {
-                _globalSnapshot.State.Snapshot = _deepCopier.Copy(_confirmedView);
-                _globalSnapshot.State.SnapshotVersion = _confirmedVersion;
-                await _grainStorage.WriteStateAsync(_grainTypeName, Services.GrainId, _globalSnapshot);
+                var updatedState = base.TentativeView;
+                if (_snapshotPolicy.ShouldTakeSnapshot(updatedState, _globalVersion, events.Cast<object>()))
+                {
+                    _globalSnapshot.State.Snapshot = updatedState;
+                    _globalSnapshot.State.SnapshotVersion = _globalVersion;
+                    await _grainStorage.WriteStateAsync(_grainTypeName, Services.GrainId, _globalSnapshot);
+                    Services.Log(LogLevel.Debug, "write ({0} updates) success {1}", updates.Length, _globalSnapshot);
+                }
                 batchSuccessfullyWritten = true;
-                Services.Log(LogLevel.Debug, "write ({0} updates) success {1}", updates.Length, _globalSnapshot);
                 LastPrimaryIssue.Resolve(Host, Services);
             }
             catch (Exception ex)
@@ -199,9 +206,10 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
                         _globalVersion = await _logStorage.GetLastVersionAsync(_grainTypeName, Services.GrainId);
                         if (_confirmedVersion < _globalVersion)
                         {
-                            var logEntries = await RetrieveLogSegment(_confirmedVersion, _globalVersion);
+                            var logEntries = await RetrieveLogSegment(_confirmedVersion + 1, _globalVersion);
                             Services.Log(LogLevel.Debug, "read success {0}", logEntries);
                             UpdateConfirmedView(logEntries);
+                            _confirmedVersion = _globalVersion;
                         }
                         LastPrimaryIssue.Resolve(Host, Services);
                         break; // successful
@@ -259,7 +267,7 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
     /// <inheritdoc />
     protected override void OnNotificationReceived(INotificationMessage payload)
     {
-        if (payload is UpdateNotificationMessage um)
+        if (payload is UpdateNotificationMessage um && um != null)
         {
             _notifications.Add(um.Version - um.Updates.Count, um);
         }
@@ -287,6 +295,7 @@ internal class LogViewAdaptor<TLogView, TLogEntry> : PrimaryBasedLogViewAdaptor<
             _globalSnapshot.ETag = updateNotification.ETag;
             _globalVersion = updateNotification.Version;
             UpdateConfirmedView(updateNotification.Updates);
+            _confirmedVersion = updateNotification.Version;
             Services.Log(LogLevel.Debug, "notification success ({0} updates) {1}", updateNotification.Updates.Count, _globalSnapshot);
         }
         Services.Log(LogLevel.Trace, "unprocessed notifications in queue: {0}", _notifications.Count);

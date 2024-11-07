@@ -1,4 +1,5 @@
 ﻿using Orleans.EventSourcing.Common;
+using Orleans.EventSourcing.StateStorage;
 
 namespace Orleans.EventSourcing.EventStoreStorage;
 
@@ -39,7 +40,9 @@ public sealed class SnapshotWithMetaDataAndETag<TView> : IGrainState<SnapshotWit
 
     /// <inheritdoc />
     [Id(2)]
-    public SnapshotWithMetaData<TView> State { get; set; }
+    public SnapshotWithMetaData<TView> StateAndMetaData { get; set; }
+
+    public SnapshotWithMetaData<TView> State { get => StateAndMetaData; set => StateAndMetaData = value; }
 
     /// <summary>
     ///     Convert current SnapshotWithMetaDataAndETag object information to a string

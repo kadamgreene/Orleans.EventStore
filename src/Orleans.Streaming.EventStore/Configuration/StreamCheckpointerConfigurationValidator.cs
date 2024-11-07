@@ -1,4 +1,5 @@
-﻿using Orleans.Runtime;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Orleans.Runtime;
 using Orleans.Streams;
 
 namespace Orleans.Configuration;
@@ -27,7 +28,7 @@ public class StreamCheckpointerConfigurationValidator : IConfigurationValidator
     /// <exception cref="OrleansConfigurationException">Thrown if no IStreamQueueCheckpointer is configured with the PersistentStreamProvider.</exception>
     public void ValidateConfiguration()
     {
-        var checkpointerFactory = _serviceProvider.GetServiceByName<IStreamQueueCheckpointerFactory>(_name);
+        var checkpointerFactory = _serviceProvider.GetKeyedService<IStreamQueueCheckpointerFactory>(_name);
         if (checkpointerFactory == null)
         {
             throw new OrleansConfigurationException($"No IStreamQueueCheckpointer is configured with PersistentStreamProvider {_name}. Please configure one.");

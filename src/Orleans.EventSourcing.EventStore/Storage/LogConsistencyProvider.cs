@@ -1,4 +1,5 @@
-﻿using Orleans.Serialization;
+﻿using Orleans.EventSourcing.Storage;
+using Orleans.Serialization;
 using Orleans.Storage;
 
 namespace Orleans.EventSourcing.EventStoreStorage;
@@ -15,18 +16,21 @@ public class LogConsistencyProvider : ILogViewAdaptorFactory
 {
     private readonly ILogConsistentStorage _logConsistentStorage;
     private readonly DeepCopier _deepCopier;
+    private readonly ISnapshotPolicy? _snapshotPolicy;
 
     /// <summary>
     ///     Initializes a new instance of LogConsistencyProvider class
     /// </summary>
     /// <param name="logConsistentStorage"></param>
     /// <param name="deepCopier"></param>
-    public LogConsistencyProvider(ILogConsistentStorage logConsistentStorage, DeepCopier deepCopier)
+    /// <param name="snapshotPolicy"></param>
+    public LogConsistencyProvider(ILogConsistentStorage logConsistentStorage, DeepCopier deepCopier, ISnapshotPolicy? snapshotPolicy)
     {
         ArgumentNullException.ThrowIfNull(logConsistentStorage);
         ArgumentNullException.ThrowIfNull(deepCopier);
         _logConsistentStorage = logConsistentStorage;
         _deepCopier = deepCopier;
+        _snapshotPolicy = snapshotPolicy;
     }
 
     /// <inheritdoc />
@@ -34,7 +38,7 @@ public class LogConsistencyProvider : ILogViewAdaptorFactory
         where TLogView : class, new()
         where TLogEntry : class
     {
-        return new LogViewAdaptor<TLogView, TLogEntry>(hostGrain, initialState, grainStorage, grainTypeName, services, _logConsistentStorage, _deepCopier);
+        return new LogViewAdaptor<TLogView, TLogEntry>(hostGrain, initialState, grainStorage, grainTypeName, services, _logConsistentStorage, _deepCopier, _snapshotPolicy);
     }
 
     /// <inheritdoc />
