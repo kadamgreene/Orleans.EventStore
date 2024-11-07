@@ -18,7 +18,7 @@ steps:
 - task: DotNetCoreCLI@2
   inputs:
     command: 'pack'
-    packagesToPack: '**/*.csproj'
+    packagesToPack: '**/Orleans.*.csproj'
     nobuild: true
     versioningScheme: 'byEnvVar'
     versionEnvVar: 'nupkgVersion'
