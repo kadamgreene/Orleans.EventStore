@@ -1,4 +1,5 @@
 ﻿using EventStore.Client;
+using Orleans.EventSourcing.Storage;
 using Orleans.Storage;
 
 namespace Orleans.Configuration;
@@ -29,4 +30,6 @@ public class EventStoreStorageOptions : IStorageProviderSerializerOptions
     /// </summary>
     [Redact]
     public UserCredentials? Credentials { get; set; }
+
+    public ISnapshotPolicy SnapshotPolicy { get; set; }
 }

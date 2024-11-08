@@ -45,3 +45,5 @@ nuget/
 *.sln.ide
 *.sln.ide-shm
 *.sln.ide-wal
+/.vs
+/samples/ChatRoom.Server/Logs/log.txt

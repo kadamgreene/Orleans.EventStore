@@ -16,7 +16,7 @@ public class ClientTests
     [OneTimeSetUp]
     public void Setup()
     {
-        var clientSettings = EventStoreClientSettings.Create("esdb://123.60.184.85:2113?tls=false");
+        var clientSettings = EventStoreClientSettings.Create("esdb://127.0.01:2113?tls=false");
         _client = new EventStoreClient(clientSettings);
         _id = new Guid("888858d7-77e6-4ce1-846c-86d28ce34f78");
     }

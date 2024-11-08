@@ -25,7 +25,7 @@ internal class EventStoreQueueAdapterReceiver : IQueueAdapterReceiver, IQueueCac
     private readonly ILogger<EventStoreQueueAdapterReceiver> _logger;
     private readonly IQueueAdapterReceiverMonitor _receiverMonitor;
     private readonly LoadSheddingOptions _loadSheddingOptions;
-    private readonly IHostEnvironmentStatistics? _hostEnvironmentStatistics;
+    private readonly IEnvironmentStatisticsProvider? _hostEnvironmentStatistics;
     private readonly Func<EventStoreReceiverSettings, string, ILogger, IEventStoreReceiver> _eventStoreReceiverFactory;
 
     private IEventStoreQueueCache? _cache;
@@ -39,7 +39,10 @@ internal class EventStoreQueueAdapterReceiver : IQueueAdapterReceiver, IQueueCac
     private const int ReceiverShutdown = 0;
     private const int ReceiverRunning = 1;
 
-    public EventStoreQueueAdapterReceiver(EventStoreReceiverSettings settings, Func<string, IStreamQueueCheckpointer<string>, ILoggerFactory, IEventStoreQueueCache> cacheFactory, Func<string, Task<IStreamQueueCheckpointer<string>>> checkpointerFactory, ILoggerFactory loggerFactory, IQueueAdapterReceiverMonitor receiverMonitor, LoadSheddingOptions loadSheddingOptions, IHostEnvironmentStatistics? hostEnvironmentStatistics, Func<EventStoreReceiverSettings, string, ILogger, IEventStoreReceiver>? eventStoreReceiverFactory = null)
+    public EventStoreQueueAdapterReceiver(EventStoreReceiverSettings settings, Func<string, IStreamQueueCheckpointer<string>, ILoggerFactory,
+        IEventStoreQueueCache> cacheFactory, Func<string, Task<IStreamQueueCheckpointer<string>>> checkpointerFactory, ILoggerFactory loggerFactory,
+        IQueueAdapterReceiverMonitor receiverMonitor, LoadSheddingOptions loadSheddingOptions, IEnvironmentStatisticsProvider? hostEnvironmentStatistics,
+        Func<EventStoreReceiverSettings, string, ILogger, IEventStoreReceiver>? eventStoreReceiverFactory = null)
     {
         ArgumentNullException.ThrowIfNull(settings, nameof(settings));
         ArgumentNullException.ThrowIfNull(cacheFactory, nameof(cacheFactory));

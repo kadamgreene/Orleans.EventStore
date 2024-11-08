@@ -45,7 +45,7 @@ public partial class App
     private static IHostBuilder CreateHostBuilder()
     {
         // var redisConnectionString = "123.60.184.85:6379";
-        var eventStoreConnectionString = "esdb://123.60.184.85:2113?tls=false";
+        var eventStoreConnectionString = "esdb://127.0.0.1:2113?tls=false";
         return Host.CreateDefaultBuilder()
                    .ConfigureServices(services =>
                                       {
