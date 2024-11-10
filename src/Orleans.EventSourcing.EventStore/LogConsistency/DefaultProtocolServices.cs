@@ -21,7 +21,11 @@ internal class DefaultProtocolServices : ILogConsistencyProtocolServices
     /// <param name="loggerFactory"></param>
     /// <param name="deepCopier"></param>
     /// <param name="siloDetails"></param>
-    public DefaultProtocolServices(IGrainContext grainContext, ILoggerFactory loggerFactory, DeepCopier deepCopier, ILocalSiloDetails siloDetails)
+    public DefaultProtocolServices(
+        IGrainContext grainContext, 
+        ILoggerFactory loggerFactory, 
+        DeepCopier deepCopier, 
+        ILocalSiloDetails siloDetails)
     {
         _grainContext = grainContext;
         _logger = loggerFactory.CreateLogger<DefaultProtocolServices>();
@@ -44,24 +48,41 @@ internal class DefaultProtocolServices : ILogConsistencyProtocolServices
     /// <inheritdoc />
     public void ProtocolError(string msg, bool throwexception)
     {
-        _logger.LogError((int)(throwexception ? ErrorCode.LogConsistency_ProtocolFatalError : ErrorCode.LogConsistency_ProtocolError), "{GrainId} Protocol Error: {Message}", _grainContext.GrainId, msg);
+        _logger.LogError(
+            (int)(throwexception ? ErrorCode.LogConsistency_ProtocolFatalError : ErrorCode.LogConsistency_ProtocolError), 
+            "{GrainId} Protocol Error: {Message}", 
+            _grainContext.GrainId, 
+            msg);
+
         if (!throwexception)
         {
             return;
         }
+
         throw new OrleansException($"{msg} (grain={_grainContext.GrainId}, cluster={MyClusterId})");
     }
 
     /// <inheritdoc />
     public void CaughtException(string where, Exception ex)
     {
-        _logger.LogError((int)ErrorCode.LogConsistency_CaughtException, ex, "{GrainId} exception caught at {Location}", _grainContext.GrainId, where);
+        _logger.LogError(
+            (int)ErrorCode.LogConsistency_CaughtException, 
+            ex, 
+            "{GrainId} exception caught at {Location}", 
+            _grainContext.GrainId, 
+            where);
     }
 
     /// <inheritdoc />
     public void CaughtUserCodeException(string callback, string where, Exception ex)
     {
-        _logger.LogWarning((int)ErrorCode.LogConsistency_UserCodeException, ex, "{GrainId} exception caught in user code for {Callback}, called from {Location}", _grainContext.GrainId, callback, where);
+        _logger.LogWarning(
+            (int)ErrorCode.LogConsistency_UserCodeException, 
+            ex, 
+            "{GrainId} exception caught in user code for {Callback}, called from {Location}", 
+            _grainContext.GrainId, 
+            callback, 
+            where);
     }
 
     /// <inheritdoc />

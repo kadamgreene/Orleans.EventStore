@@ -25,7 +25,7 @@ public class EventStoreQueueAdapter : IQueueAdapter, IQueueAdapterCache
     private readonly IEventStoreDataAdapter _dataAdapter;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IHostEnvironmentStatistics? _hostEnvironmentStatistics;
+    private readonly IEnvironmentStatisticsProvider? _hostEnvironmentStatistics;
     private readonly Func<EventStoreReceiverSettings, string, ILogger, IEventStoreReceiver>? _receiverFactory;
 
     private IStreamQueueCheckpointerFactory? _checkpointerFactory;
@@ -47,7 +47,11 @@ public class EventStoreQueueAdapter : IQueueAdapter, IQueueAdapterCache
     /// <param name="serviceProvider">The service provider.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="hostEnvironmentStatistics">The host environment statistics.</param>
-    public EventStoreQueueAdapter(string name, EventStoreOptions options, EventStoreReceiverOptions receiverOptions, HashRingBasedPartitionedStreamQueueMapper streamQueueMapper, Func<string, IStreamQueueCheckpointer<string>, ILoggerFactory, IEventStoreQueueCache> cacheFactory, Func<EventStoreReceiverMonitorDimensions, ILoggerFactory, IQueueAdapterReceiverMonitor> receiverMonitorFactory, Func<EventStoreReceiverSettings, string, ILogger, IEventStoreReceiver> receiverFactory, IEventStoreDataAdapter dataAdapter, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IHostEnvironmentStatistics? hostEnvironmentStatistics)
+    public EventStoreQueueAdapter(string name, EventStoreOptions options, EventStoreReceiverOptions receiverOptions, 
+        HashRingBasedPartitionedStreamQueueMapper streamQueueMapper, Func<string, IStreamQueueCheckpointer<string>, ILoggerFactory, 
+        IEventStoreQueueCache> cacheFactory, Func<EventStoreReceiverMonitorDimensions, ILoggerFactory, IQueueAdapterReceiverMonitor> receiverMonitorFactory, 
+        Func<EventStoreReceiverSettings, string, ILogger, IEventStoreReceiver> receiverFactory, IEventStoreDataAdapter dataAdapter, IServiceProvider serviceProvider, 
+        ILoggerFactory loggerFactory, IEnvironmentStatisticsProvider? hostEnvironmentStatistics)
     {
         ArgumentException.ThrowIfNullOrEmpty(name, nameof(name));
         ArgumentNullException.ThrowIfNull(options, nameof(options));
@@ -153,9 +157,11 @@ public class EventStoreQueueAdapter : IQueueAdapter, IQueueAdapterCache
         // Should only need checkpointer on silo side, so move its init logic when it is used.
         if (_checkpointerFactory == null)
         {
-            _checkpointerFactory = _serviceProvider.GetRequiredServiceByName<IStreamQueueCheckpointerFactory>(Name);
+            _checkpointerFactory = _serviceProvider.GetRequiredKeyedService<IStreamQueueCheckpointerFactory>(Name);
         }
-        return new EventStoreQueueAdapterReceiver(receiverSettings, _cacheFactory, _checkpointerFactory.Create, _loggerFactory, _receiverMonitorFactory(receiverMonitorDimensions, _loggerFactory), _serviceProvider.GetRequiredService<IOptions<LoadSheddingOptions>>().Value, _hostEnvironmentStatistics, _receiverFactory);
+        return new EventStoreQueueAdapterReceiver(receiverSettings, _cacheFactory, _checkpointerFactory.Create, 
+            _loggerFactory, _receiverMonitorFactory(receiverMonitorDimensions, _loggerFactory), 
+            _serviceProvider.GetRequiredService<IOptions<LoadSheddingOptions>>().Value, _hostEnvironmentStatistics, _receiverFactory);
     }
 
     #endregion

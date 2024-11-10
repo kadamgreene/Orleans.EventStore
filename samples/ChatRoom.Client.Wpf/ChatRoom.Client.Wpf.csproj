@@ -2,19 +2,19 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net7.0-windows</TargetFramework>
+        <TargetFramework>net8.0-windows</TargetFramework>
         <Nullable>enable</Nullable>
         <UseWPF>true</UseWPF>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Fluxera.Utilities" Version="7.1.0" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
-        <PackageReference Include="Microsoft.Orleans.BroadcastChannel" Version="7.1.2" />
-        <PackageReference Include="Microsoft.Orleans.Client" Version="7.1.2" />
-        <PackageReference Include="Microsoft.Orleans.Streaming" Version="7.1.2" />
-        <PackageReference Include="Microsoft.Orleans.Transactions" Version="7.1.2" />
-        <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="7.1.1-beta1" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Orleans.BroadcastChannel" Version="8.2.0" />
+        <PackageReference Include="Microsoft.Orleans.Client" Version="8.2.0" />
+        <PackageReference Include="Microsoft.Orleans.Streaming" Version="8.2.0" />
+        <PackageReference Include="Microsoft.Orleans.Transactions" Version="8.2.0" />
+        <PackageReference Include="Microsoft.Orleans.Clustering.Redis" Version="8.2.0" />
     </ItemGroup>
 
     <ItemGroup>

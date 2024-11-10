@@ -87,7 +87,7 @@ public class SnackGrainTests
         var grainFactory = Cluster.ServiceProvider.GetRequiredService<IGrainFactory>();
         var snackGrain = grainFactory.GetGrain<ISnackGrain>(_snackId);
         snackGrain.Should().NotBeNull();
-        var getEventsResult = await snackGrain.GetEventsAsync(1, 2);
+        var getEventsResult = await snackGrain.GetEventsAsync(0, 1);
         getEventsResult.IsSuccess.Should().BeTrue();
         getEventsResult.Value.Should().HaveCount(2);
         foreach (var snackEvent in getEventsResult.Value)

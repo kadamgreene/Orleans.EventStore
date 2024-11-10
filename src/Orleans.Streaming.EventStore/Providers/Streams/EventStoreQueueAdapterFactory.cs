@@ -22,7 +22,7 @@ public class EventStoreQueueAdapterFactory : IQueueAdapterFactory
     private readonly IEventStoreDataAdapter _dataAdapter;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IHostEnvironmentStatistics? _hostEnvironmentStatistics;
+    private readonly IEnvironmentStatisticsProvider? _hostEnvironmentStatistics;
 
     private HashRingBasedPartitionedStreamQueueMapper? _streamQueueMapper;
     private EventStoreQueueAdapter? _queueAdapter;
@@ -40,7 +40,7 @@ public class EventStoreQueueAdapterFactory : IQueueAdapterFactory
         var cachePressureOptions = serviceProvider.GetOptionsByName<EventStoreStreamCachePressureOptions>(name);
         var cacheEvictionOptions = serviceProvider.GetOptionsByName<StreamCacheEvictionOptions>(name);
         var statisticOptions = serviceProvider.GetOptionsByName<StreamStatisticOptions>(name);
-        var dataAdapter = serviceProvider.GetServiceByName<IEventStoreDataAdapter>(name) ?? serviceProvider.GetService<IEventStoreDataAdapter>() ?? ActivatorUtilities.CreateInstance<EventStoreQueueDataAdapterV2>(serviceProvider);
+        var dataAdapter = serviceProvider.GetKeyedService<IEventStoreDataAdapter>(name) ?? serviceProvider.GetService<IEventStoreDataAdapter>() ?? ActivatorUtilities.CreateInstance<EventStoreQueueDataAdapterV2>(serviceProvider);
         return ActivatorUtilities.CreateInstance<EventStoreQueueAdapterFactory>(serviceProvider, name, options, receiverOptions, cachePressureOptions, cacheEvictionOptions, statisticOptions, dataAdapter);
     }
 
@@ -57,7 +57,7 @@ public class EventStoreQueueAdapterFactory : IQueueAdapterFactory
     /// <param name="serviceProvider">The service provider.</param>
     /// <param name="loggerFactory">The logger factory.</param>
     /// <param name="hostEnvironmentStatistics">The host environment statistics.</param>
-    public EventStoreQueueAdapterFactory(string name, EventStoreOptions options, EventStoreReceiverOptions receiverOptions, EventStoreStreamCachePressureOptions cachePressureOptions, StreamCacheEvictionOptions cacheEvictionOptions, StreamStatisticOptions statisticOptions, IEventStoreDataAdapter dataAdapter, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IHostEnvironmentStatistics? hostEnvironmentStatistics)
+    public EventStoreQueueAdapterFactory(string name, EventStoreOptions options, EventStoreReceiverOptions receiverOptions, EventStoreStreamCachePressureOptions cachePressureOptions, StreamCacheEvictionOptions cacheEvictionOptions, StreamStatisticOptions statisticOptions, IEventStoreDataAdapter dataAdapter, IServiceProvider serviceProvider, ILoggerFactory loggerFactory, IEnvironmentStatisticsProvider? hostEnvironmentStatistics)
     {
         ArgumentNullException.ThrowIfNull(options, nameof(options));
         ArgumentNullException.ThrowIfNull(receiverOptions, nameof(receiverOptions));

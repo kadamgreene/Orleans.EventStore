@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Orleans.Runtime;
+using Orleans.EventSourcing.Storage;
+using Orleans.Providers;
 
 namespace Orleans.EventSourcing.EventStoreStorage;
 
@@ -13,7 +14,12 @@ public static class LogConsistencyProviderFactory
     /// </summary>
     public static LogConsistencyProvider Create(IServiceProvider serviceProvider, string name)
     {
-        var logConsistentStorage = serviceProvider.GetRequiredServiceByName<ILogConsistentStorage>(name);
-        return ActivatorUtilities.CreateInstance<LogConsistencyProvider>(serviceProvider, logConsistentStorage);
+        var logConsistentStorage = serviceProvider.GetRequiredKeyedService<ILogConsistentStorage>(name);
+        var snapshotPolicy = serviceProvider.GetKeyedService<ISnapshotPolicy>(name);
+        if (snapshotPolicy == null)
+        {
+            snapshotPolicy = serviceProvider.GetKeyedService<ISnapshotPolicy>(ProviderConstants.DEFAULT_STORAGE_PROVIDER_NAME);
+        }
+        return ActivatorUtilities.CreateInstance<LogConsistencyProvider>(serviceProvider, logConsistentStorage, snapshotPolicy);
     }
 }
