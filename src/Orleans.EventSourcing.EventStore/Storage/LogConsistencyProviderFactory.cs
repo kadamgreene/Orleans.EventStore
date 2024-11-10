@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Orleans.EventSourcing.Storage;
 using Orleans.Providers;
-using Orleans.Runtime;
 
 namespace Orleans.EventSourcing.EventStoreStorage;
 

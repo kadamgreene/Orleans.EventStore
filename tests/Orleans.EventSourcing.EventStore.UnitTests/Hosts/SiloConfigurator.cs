@@ -1,4 +1,5 @@
 ﻿using EventStore.Client;
+using Orleans.EventSourcing.Storage;
 using Orleans.TestingHost;
 
 namespace Orleans.EventSourcing.EventStore.UnitTests.Hosts;
@@ -13,6 +14,7 @@ public class SiloConfigurator : ISiloConfigurator
                                                       options =>
                                                       {
                                                           options.ClientSettings = EventStoreClientSettings.Create(eventStoreConnectionString);
+                                                          options.SnapshotPolicy = SnapshotPolicies.Every(1);
                                                       })
             .AddMemoryGrainStorage(Constants.LogSnapshotStoreName);
     }
